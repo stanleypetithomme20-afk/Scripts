@@ -1,0 +1,1437 @@
+--[[
+========================================================
+        APEX COMMUNITY V11
+        Created by Vex
+        FOR YOUR OWN ROBLOX STUDIO GAME
+========================================================
+Features:
+• Key System ("apex")
+• Wall Hop
+• Walk Speed ON/OFF + Slider
+• Jump Power ON/OFF + Slider
+• Wall Distance
+• Wall Power
+• Wall Push
+• Movement Preserve
+• ESP
+• Visual Hitbox
+• FPS Boost
+• FPS Counter
+• GPS
+• Compact Mobile UI
+• PC Support
+• Draggable Window
+• Small Reopen Button
+• Reset Settings
+========================================================
+]]
+
+--------------------------------------------------------
+-- SERVICES
+--------------------------------------------------------
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+--------------------------------------------------------
+-- COLORS
+--------------------------------------------------------
+
+local C = {
+	BG = Color3.fromRGB(10, 8, 17),
+	Header = Color3.fromRGB(24, 16, 37),
+	Card = Color3.fromRGB(25, 18, 40),
+	Hover = Color3.fromRGB(38, 28, 55),
+	Track = Color3.fromRGB(55, 44, 70),
+
+	Orange = Color3.fromRGB(255, 145, 10),
+	Orange2 = Color3.fromRGB(255, 190, 65),
+
+	Green = Color3.fromRGB(60, 220, 125),
+	Red = Color3.fromRGB(220, 55, 70),
+
+	White = Color3.fromRGB(245, 242, 250),
+	Text = Color3.fromRGB(232, 227, 240),
+	Muted = Color3.fromRGB(155, 145, 175)
+}
+
+--------------------------------------------------------
+-- OLD GUI CLEANUP
+--------------------------------------------------------
+
+local old = PlayerGui:FindFirstChild("ApexCommunityV11")
+
+if old then
+	old:Destroy()
+end
+
+local oldKey = PlayerGui:FindFirstChild("ApexKeySystem")
+
+if oldKey then
+	oldKey:Destroy()
+end
+
+--------------------------------------------------------
+-- KEY SYSTEM GUI
+--------------------------------------------------------
+
+local KeyGui = Instance.new("ScreenGui")
+KeyGui.Name = "ApexKeySystem"
+KeyGui.ResetOnSpawn = false
+KeyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+KeyGui.Parent = PlayerGui
+
+local KeyFrame = Instance.new("Frame")
+KeyFrame.Size = UDim2.fromOffset(280, 175)
+KeyFrame.Position = UDim2.new(0.5, -140, 0.5, -87)
+KeyFrame.BackgroundColor3 = C.BG
+KeyFrame.BorderSizePixel = 0
+KeyFrame.Parent = KeyGui
+
+Instance.new("UICorner", KeyFrame).CornerRadius = UDim.new(0, 13)
+
+local KeyStroke = Instance.new("UIStroke")
+KeyStroke.Color = Color3.fromRGB(85, 60, 110)
+KeyStroke.Transparency = 0.25
+KeyStroke.Parent = KeyFrame
+
+local KeyHeader = Instance.new("Frame")
+KeyHeader.Size = UDim2.new(1, 0, 0, 45)
+KeyHeader.BackgroundColor3 = C.Header
+KeyHeader.BorderSizePixel = 0
+KeyHeader.Parent = KeyFrame
+
+Instance.new("UICorner", KeyHeader).CornerRadius = UDim.new(0, 13)
+
+local KeyTitle = Instance.new("TextLabel")
+KeyTitle.Size = UDim2.new(1, -20, 1, 0)
+KeyTitle.Position = UDim2.fromOffset(12, 0)
+KeyTitle.BackgroundTransparency = 1
+KeyTitle.Text = "APEX • ENTER KEY"
+KeyTitle.TextColor3 = C.Orange
+KeyTitle.TextSize = 13
+KeyTitle.Font = Enum.Font.GothamBold
+KeyTitle.TextXAlignment = Enum.TextXAlignment.Left
+KeyTitle.Parent = KeyHeader
+
+local KeyBox = Instance.new("TextBox")
+KeyBox.Size = UDim2.new(1, -24, 0, 40)
+KeyBox.Position = UDim2.fromOffset(12, 60)
+KeyBox.BackgroundColor3 = C.Card
+KeyBox.BorderSizePixel = 0
+KeyBox.PlaceholderText = "Enter key here..."
+KeyBox.Text = ""
+KeyBox.TextColor3 = C.Text
+KeyBox.PlaceholderColor3 = C.Muted
+KeyBox.TextSize = 11
+KeyBox.Font = Enum.Font.GothamMedium
+KeyBox.ClearTextOnFocus = false
+KeyBox.Parent = KeyFrame
+
+Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 9)
+
+local SubmitBtn = Instance.new("TextButton")
+SubmitBtn.Size = UDim2.new(1, -24, 0, 40)
+SubmitBtn.Position = UDim2.fromOffset(12, 115)
+SubmitBtn.BackgroundColor3 = C.Orange
+SubmitBtn.BorderSizePixel = 0
+SubmitBtn.Text = "SUBMIT"
+SubmitBtn.TextColor3 = C.White
+SubmitBtn.TextSize = 11
+SubmitBtn.Font = Enum.Font.GothamBold
+SubmitBtn.Parent = KeyFrame
+
+Instance.new("UICorner", SubmitBtn).CornerRadius = UDim.new(0, 9)
+
+local authenticated = false
+
+local function verifyKey()
+	if KeyBox.Text == "apex" then
+		authenticated = true
+		KeyGui:Destroy()
+	else
+		KeyBox.Text = ""
+		KeyBox.PlaceholderText = "Incorrect Key! Try again"
+	end
+end
+
+SubmitBtn.MouseButton1Click:Connect(verifyKey)
+KeyBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		verifyKey()
+	end
+end)
+
+repeat task.wait(0.1) until authenticated
+
+--------------------------------------------------------
+-- SETTINGS
+--------------------------------------------------------
+
+local Settings = {
+	WallHop = false,
+
+	WalkSpeedEnabled = false,
+	WalkSpeed = 16,
+
+	JumpPowerEnabled = false,
+	JumpPower = 50,
+
+	WallDistance = 4.5,
+	WallPower = 48,
+	WallPush = 2.5,
+	MovementPreserve = 0.78,
+
+	ESP = false,
+	VisualHitbox = false,
+	FPSBoost = false
+}
+
+--------------------------------------------------------
+-- CHARACTER
+--------------------------------------------------------
+
+local Character
+local Humanoid
+local Root
+
+local function setupCharacter(char)
+	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
+	Root = char:WaitForChild("HumanoidRootPart")
+
+	Humanoid.UseJumpPower = true
+
+	if Settings.WalkSpeedEnabled then
+		Humanoid.WalkSpeed = Settings.WalkSpeed
+	else
+		Humanoid.WalkSpeed = 16
+	end
+
+	if Settings.JumpPowerEnabled then
+		Humanoid.JumpPower = Settings.JumpPower
+	else
+		Humanoid.JumpPower = 50
+	end
+end
+
+setupCharacter(Player.Character or Player.CharacterAdded:Wait())
+
+Player.CharacterAdded:Connect(function(char)
+	task.wait()
+	setupCharacter(char)
+end)
+
+--------------------------------------------------------
+-- GUI
+--------------------------------------------------------
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "ApexCommunityV11"
+Gui.ResetOnSpawn = false
+Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+Gui.Parent = PlayerGui
+
+--------------------------------------------------------
+-- MAIN WINDOW
+--------------------------------------------------------
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.fromOffset(285, 405)
+Main.Position = UDim2.new(1, -300, .5, -202)
+Main.BackgroundColor3 = C.BG
+Main.BorderSizePixel = 0
+Main.Parent = Gui
+
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 13)
+
+local Stroke = Instance.new("UIStroke")
+Stroke.Color = Color3.fromRGB(85, 60, 110)
+Stroke.Transparency = .25
+Stroke.Parent = Main
+
+--------------------------------------------------------
+-- HEADER
+--------------------------------------------------------
+
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 54)
+Header.BackgroundColor3 = C.Header
+Header.BorderSizePixel = 0
+Header.Parent = Main
+
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 13)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -65, 0, 24)
+Title.Position = UDim2.fromOffset(13, 5)
+Title.BackgroundTransparency = 1
+Title.Text = "APEX COMMUNITY"
+Title.TextColor3 = C.Orange
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Size = UDim2.new(1, -65, 0, 17)
+Subtitle.Position = UDim2.fromOffset(13, 29)
+Subtitle.BackgroundTransparency = 1
+Subtitle.Text = "V11 • Created by Vex"
+Subtitle.TextColor3 = C.Muted
+Subtitle.TextSize = 8
+Subtitle.Font = Enum.Font.Gotham
+Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+Subtitle.Parent = Header
+
+local Close = Instance.new("TextButton")
+Close.Size = UDim2.fromOffset(30, 30)
+Close.Position = UDim2.new(1, -39, 0, 12)
+Close.BackgroundColor3 = C.Red
+Close.BorderSizePixel = 0
+Close.Text = "×"
+Close.TextColor3 = C.White
+Close.TextSize = 18
+Close.Font = Enum.Font.GothamBold
+Close.Parent = Header
+
+Instance.new("UICorner", Close).CornerRadius = UDim.new(0, 8)
+
+--------------------------------------------------------
+-- STATUS
+--------------------------------------------------------
+
+local Status = Instance.new("TextLabel")
+Status.Size = UDim2.new(1, -24, 0, 20)
+Status.Position = UDim2.fromOffset(12, 58)
+Status.BackgroundTransparency = 1
+Status.Text = "● SYSTEM READY"
+Status.TextColor3 = C.Green
+Status.TextSize = 9
+Status.Font = Enum.Font.GothamBold
+Status.TextXAlignment = Enum.TextXAlignment.Left
+Status.Parent = Main
+
+local function setStatus(text, color)
+	Status.Text = "● " .. text
+	Status.TextColor3 = color
+end
+
+--------------------------------------------------------
+-- SCROLL
+--------------------------------------------------------
+
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -10, 1, -88)
+Scroll.Position = UDim2.fromOffset(5, 83)
+Scroll.BackgroundTransparency = 1
+Scroll.BorderSizePixel = 0
+Scroll.ScrollBarThickness = 3
+Scroll.ScrollBarImageColor3 = C.Orange
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Scroll.Parent = Main
+
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0, 5)
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.Parent = Scroll
+
+--------------------------------------------------------
+-- DRAGGING
+--------------------------------------------------------
+
+local function draggable(object, handle)
+
+	local dragging = false
+	local start
+	local startPos
+
+	handle.InputBegan:Connect(function(input)
+
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			dragging = true
+			start = input.Position
+			startPos = object.Position
+
+			input.Changed:Connect(function()
+
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+
+			end)
+		end
+	end)
+
+	UIS.InputChanged:Connect(function(input)
+
+		if not dragging then
+			return
+		end
+
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			local delta = input.Position - start
+
+			object.Position = UDim2.new(
+				startPos.X.Scale,
+				startPos.X.Offset + delta.X,
+				startPos.Y.Scale,
+				startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
+draggable(Main, Header)
+
+--------------------------------------------------------
+-- REOPEN BUTTON
+--------------------------------------------------------
+
+local Reopen = Instance.new("TextButton")
+Reopen.Size = UDim2.fromOffset(40, 40)
+Reopen.Position = UDim2.new(1, -52, .5, -20)
+Reopen.BackgroundColor3 = C.Orange
+Reopen.BorderSizePixel = 0
+Reopen.Text = "A"
+Reopen.TextColor3 = C.White
+Reopen.TextSize = 17
+Reopen.Font = Enum.Font.GothamBold
+Reopen.Visible = false
+Reopen.Parent = Gui
+
+Instance.new("UICorner", Reopen).CornerRadius = UDim.new(1, 0)
+
+draggable(Reopen, Reopen)
+
+Close.MouseButton1Click:Connect(function()
+	Main.Visible = false
+	Reopen.Visible = true
+end)
+
+Reopen.MouseButton1Click:Connect(function()
+	Main.Visible = true
+	Reopen.Visible = false
+end)
+
+--------------------------------------------------------
+-- TOGGLE
+--------------------------------------------------------
+
+local Controllers = {}
+
+local function createToggle(text, default, callback)
+
+	local Button = Instance.new("TextButton")
+	Button.Size = UDim2.new(1, -4, 0, 42)
+	Button.BackgroundColor3 = C.Card
+	Button.BorderSizePixel = 0
+	Button.Text = ""
+	Button.AutoButtonColor = false
+	Button.Parent = Scroll
+
+	Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 9)
+
+	local Label = Instance.new("TextLabel")
+	Label.Size = UDim2.new(1, -70, 1, 0)
+	Label.Position = UDim2.fromOffset(12, 0)
+	Label.BackgroundTransparency = 1
+	Label.Text = text
+	Label.TextColor3 = C.Text
+	Label.TextSize = 11
+	Label.Font = Enum.Font.GothamMedium
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.Parent = Button
+
+	local Toggle = Instance.new("Frame")
+	Toggle.Size = UDim2.fromOffset(44, 22)
+	Toggle.Position = UDim2.new(1, -55, .5, -11)
+	Toggle.BackgroundColor3 = C.Track
+	Toggle.BorderSizePixel = 0
+	Toggle.Parent = Button
+
+	Instance.new("UICorner", Toggle).CornerRadius = UDim.new(1, 0)
+
+	local Knob = Instance.new("Frame")
+	Knob.Size = UDim2.fromOffset(16, 16)
+	Knob.Position = UDim2.fromOffset(3, 3)
+	Knob.BackgroundColor3 = C.White
+	Knob.BorderSizePixel = 0
+	Knob.Parent = Toggle
+
+	Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
+
+	local enabled = default == true
+
+	local function update()
+
+		local pos
+		local color
+
+		if enabled then
+			pos = UDim2.new(1, -19, 0, 3)
+			color = C.Orange
+		else
+			pos = UDim2.fromOffset(3, 3)
+			color = C.Track
+		end
+
+		TweenService:Create(
+			Toggle,
+			TweenInfo.new(.12),
+			{BackgroundColor3 = color}
+		):Play()
+
+		TweenService:Create(
+			Knob,
+			TweenInfo.new(.12),
+			{Position = pos}
+		):Play()
+
+		callback(enabled)
+	end
+
+	Button.MouseButton1Click:Connect(function()
+		enabled = not enabled
+		update()
+	end)
+
+	Controllers[text] = function(value)
+		enabled = value
+		update()
+	end
+
+	update()
+
+	return Button
+end
+
+--------------------------------------------------------
+-- SLIDER
+--------------------------------------------------------
+
+local function createSlider(text, min, max, default, enabledFunction, callback)
+
+	local Frame = Instance.new("Frame")
+	Frame.Size = UDim2.new(1, -4, 0, 62)
+	Frame.BackgroundColor3 = C.Card
+	Frame.BorderSizePixel = 0
+	Frame.Parent = Scroll
+
+	Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 9)
+
+	local Label = Instance.new("TextLabel")
+	Label.Size = UDim2.new(1, -70, 0, 20)
+	Label.Position = UDim2.fromOffset(12, 3)
+	Label.BackgroundTransparency = 1
+	Label.Text = text
+	Label.TextColor3 = C.Text
+	Label.TextSize = 11
+	Label.Font = Enum.Font.GothamMedium
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.Parent = Frame
+
+	local Value = Instance.new("TextLabel")
+	Value.Size = UDim2.fromOffset(55, 20)
+	Value.Position = UDim2.new(1, -65, 0, 3)
+	Value.BackgroundTransparency = 1
+	Value.Text = tostring(default)
+	Value.TextColor3 = C.Orange2
+	Value.TextSize = 10
+	Value.Font = Enum.Font.GothamBold
+	Value.TextXAlignment = Enum.TextXAlignment.Right
+	Value.Parent = Frame
+
+	local Bar = Instance.new("Frame")
+	Bar.Size = UDim2.new(1, -24, 0, 6)
+	Bar.Position = UDim2.fromOffset(12, 42)
+	Bar.BackgroundColor3 = C.Track
+	Bar.BorderSizePixel = 0
+	Bar.Parent = Frame
+
+	Instance.new("UICorner", Bar).CornerRadius = UDim.new(1, 0)
+
+	local Fill = Instance.new("Frame")
+	Fill.BorderSizePixel = 0
+	Fill.BackgroundColor3 = C.Orange
+	Fill.Size = UDim2.new(
+		(default - min) / (max - min),
+		0, 1, 0
+	)
+	Fill.Parent = Bar
+
+	Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
+
+	local Knob = Instance.new("Frame")
+	Knob.Size = UDim2.fromOffset(13, 13)
+	Knob.AnchorPoint = Vector2.new(.5, .5)
+	Knob.Position = UDim2.new(
+		(default - min) / (max - min),
+		0, .5, 0
+	)
+	Knob.BackgroundColor3 = C.White
+	Knob.BorderSizePixel = 0
+	Knob.Parent = Bar
+
+	Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
+
+	local dragging = false
+
+	local function setValue(percent)
+
+		if not enabledFunction() then
+			return
+		end
+
+		percent = math.clamp(percent, 0, 1)
+
+		local value = min + (max - min) * percent
+
+		value = math.floor(value * 10 + .5) / 10
+
+		Fill.Size = UDim2.new(percent, 0, 1, 0)
+		Knob.Position = UDim2.new(percent, 0, .5, 0)
+		Value.Text = tostring(value)
+
+		callback(value)
+	end
+
+	local function inputUpdate(input)
+
+		if not enabledFunction() then
+			return
+		end
+
+		local percent =
+			(input.Position.X - Bar.AbsolutePosition.X)
+			/ Bar.AbsoluteSize.X
+
+		setValue(percent)
+	end
+
+	Bar.InputBegan:Connect(function(input)
+
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			if enabledFunction() then
+				dragging = true
+				inputUpdate(input)
+			end
+		end
+	end)
+
+	UIS.InputChanged:Connect(function(input)
+
+		if dragging then
+
+			if input.UserInputType == Enum.UserInputType.MouseMovement
+				or input.UserInputType == Enum.UserInputType.Touch then
+
+				inputUpdate(input)
+			end
+		end
+	end)
+
+	UIS.InputEnded:Connect(function(input)
+
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+
+			dragging = false
+		end
+	end)
+
+	local function refresh()
+
+		local active = enabledFunction()
+
+		Frame.BackgroundColor3 =
+			active and C.Card or Color3.fromRGB(18, 14, 27)
+
+		Bar.BackgroundColor3 =
+			active and C.Track or Color3.fromRGB(35, 30, 42)
+
+		Fill.BackgroundColor3 =
+			active and C.Orange or Color3.fromRGB(80, 75, 85)
+
+		Knob.BackgroundColor3 =
+			active and C.White or Color3.fromRGB(100, 95, 105)
+
+		Value.TextColor3 =
+			active and C.Orange2 or C.Muted
+	end
+
+	return refresh
+end
+
+--------------------------------------------------------
+-- WALK SPEED
+--------------------------------------------------------
+
+createToggle(
+	"Walk Speed",
+	false,
+	function(state)
+
+		Settings.WalkSpeedEnabled = state
+
+		if Humanoid then
+
+			if state then
+				Humanoid.WalkSpeed = Settings.WalkSpeed
+			else
+				Humanoid.WalkSpeed = 16
+			end
+		end
+
+		setStatus(
+			state and "WALK SPEED ENABLED" or "WALK SPEED OFF",
+			state and C.Green or C.Muted
+		)
+	end
+)
+
+local refreshWalkSpeed = createSlider(
+	"Speed Value",
+	8,
+	100,
+	16,
+
+	function()
+		return Settings.WalkSpeedEnabled
+	end,
+
+	function(value)
+
+		Settings.WalkSpeed = value
+
+		if Humanoid and Settings.WalkSpeedEnabled then
+			Humanoid.WalkSpeed = value
+		end
+	end
+)
+
+--------------------------------------------------------
+-- JUMP POWER
+--------------------------------------------------------
+
+createToggle(
+	"Jump Power",
+	false,
+	function(state)
+
+		Settings.JumpPowerEnabled = state
+
+		if Humanoid then
+
+			if state then
+				Humanoid.JumpPower = Settings.JumpPower
+			else
+				Humanoid.JumpPower = 50
+			end
+		end
+
+		setStatus(
+			state and "JUMP POWER ENABLED" or "JUMP POWER OFF",
+			state and C.Green or C.Muted
+		)
+	end
+)
+
+local refreshJumpPower = createSlider(
+	"Jump Value",
+	20,
+	100,
+	50,
+
+	function()
+		return Settings.JumpPowerEnabled
+	end,
+
+	function(value)
+
+		Settings.JumpPower = value
+
+		if Humanoid and Settings.JumpPowerEnabled then
+			Humanoid.JumpPower = value
+		end
+	end
+)
+
+--------------------------------------------------------
+-- WALL HOP TOGGLE
+--------------------------------------------------------
+
+createToggle(
+	"Wall Hop",
+	false,
+	function(state)
+
+		Settings.WallHop = state
+
+		setStatus(
+			state and "WALL HOP ENABLED" or "SYSTEM READY",
+			state and C.Green or C.Green
+		)
+	end
+)
+
+--------------------------------------------------------
+-- WALL SETTINGS
+--------------------------------------------------------
+
+createSlider(
+	"Wall Distance",
+	2,
+	8,
+	4.5,
+	function()
+		return true
+	end,
+	function(value)
+		Settings.WallDistance = value
+	end
+)
+
+createSlider(
+	"Wall Power",
+	25,
+	80,
+	48,
+	function()
+		return true
+	end,
+	function(value)
+		Settings.WallPower = value
+	end
+)
+
+createSlider(
+	"Wall Push",
+	0,
+	12,
+	2.5,
+	function()
+		return true
+	end,
+	function(value)
+		Settings.WallPush = value
+	end
+)
+
+createSlider(
+	"Movement Preserve",
+	.2,
+	1,
+	.78,
+	function()
+		return true
+	end,
+	function(value)
+		Settings.MovementPreserve = value
+	end
+)
+
+--------------------------------------------------------
+-- RAYCAST
+--------------------------------------------------------
+
+local RayParams = RaycastParams.new()
+RayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function updateRayFilter()
+
+	if Character then
+		RayParams.FilterDescendantsInstances = {Character}
+	end
+end
+
+local function flat(v)
+
+	local xz = Vector3.new(v.X, 0, v.Z)
+
+	if xz.Magnitude < .001 then
+		return Vector3.zero
+	end
+
+	return xz.Unit
+end
+
+--------------------------------------------------------
+-- WALL DETECTION
+--------------------------------------------------------
+
+local function getWall()
+
+	if not Root or not Character then
+		return nil
+	end
+
+	updateRayFilter()
+
+	local pos = Root.Position
+
+	local origins = {
+		pos,
+		pos + Vector3.new(0, 1.2, 0),
+		pos + Vector3.new(0, -.7, 0)
+	}
+
+	local forward = flat(Root.CFrame.LookVector)
+	local right = flat(Root.CFrame.RightVector)
+
+	local directions = {
+		forward,
+		-forward,
+		right,
+		-right,
+
+		flat(forward + right * .5),
+		flat(forward - right * .5)
+	}
+
+	local closest
+	local closestDistance = math.huge
+
+	for _, origin in ipairs(origins) do
+
+		for _, direction in ipairs(directions) do
+
+			if direction.Magnitude > .01 then
+
+				local hit = workspace:Raycast(
+					origin,
+					direction * Settings.WallDistance,
+					RayParams
+				)
+
+				if hit
+					and hit.Instance
+					and hit.Instance.CanCollide then
+
+					if math.abs(hit.Normal.Y) < .55 then
+
+						local distance =
+							(hit.Position - origin).Magnitude
+
+						if distance < closestDistance then
+							closestDistance = distance
+							closest = hit
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+--------------------------------------------------------
+-- WALL HOP
+--------------------------------------------------------
+
+local LastWallHop = 0
+
+local function wallHop()
+
+	if not Settings.WallHop then
+		return
+	end
+
+	if not Humanoid or not Root then
+		return
+	end
+
+	-- Only wall-hop while airborne.
+	if Humanoid.FloorMaterial ~= Enum.Material.Air then
+		return
+	end
+
+	local now = os.clock()
+
+	if now - LastWallHop < .14 then
+		return
+	end
+
+	local wall = getWall()
+
+	if not wall then
+		return
+	end
+
+	local normal = flat(wall.Normal)
+
+	if normal.Magnitude < .01 then
+		return
+	end
+
+	local velocity = Root.AssemblyLinearVelocity
+
+	local horizontal =
+		Vector3.new(
+			velocity.X,
+			0,
+			velocity.Z
+		)
+
+	-- Remove velocity going into the wall.
+	local intoWall = horizontal:Dot(-normal)
+
+	if intoWall > 0 then
+		horizontal += normal * intoWall
+	end
+
+	horizontal *= Settings.MovementPreserve
+
+	horizontal += normal * Settings.WallPush
+
+	local maxHorizontal = 45
+
+	if horizontal.Magnitude > maxHorizontal then
+		horizontal = horizontal.Unit * maxHorizontal
+	end
+
+	Root.AssemblyLinearVelocity = Vector3.new(
+		horizontal.X,
+		math.max(Settings.WallPower, 35),
+		horizontal.Z
+	)
+
+	LastWallHop = now
+
+	Humanoid:ChangeState(
+		Enum.HumanoidStateType.Jumping
+	)
+end
+
+--------------------------------------------------------
+-- MOBILE / PC JUMP
+--------------------------------------------------------
+
+UIS.JumpRequest:Connect(function()
+	wallHop()
+end)
+
+--------------------------------------------------------
+-- ESP
+--------------------------------------------------------
+
+local ESPObjects = {}
+
+local function removeESP()
+
+	for _, object in pairs(ESPObjects) do
+
+		if object then
+			object:Destroy()
+		end
+	end
+
+	table.clear(ESPObjects)
+end
+
+local function updateESP()
+
+	if not Settings.ESP then
+		removeESP()
+		return
+	end
+
+	for _, other in ipairs(Players:GetPlayers()) do
+
+		if other ~= Player and other.Character then
+
+			if not ESPObjects[other.Character] then
+
+				local highlight = Instance.new("Highlight")
+
+				highlight.Name = "ApexESP"
+				highlight.FillColor = C.Orange
+				highlight.OutlineColor = C.Orange2
+				highlight.FillTransparency = .82
+				highlight.OutlineTransparency = .05
+				highlight.DepthMode =
+					Enum.HighlightDepthMode.AlwaysOnTop
+
+				highlight.Parent = other.Character
+
+				ESPObjects[other.Character] = highlight
+			end
+		end
+	end
+end
+
+createToggle(
+	"ESP",
+	false,
+	function(state)
+
+		Settings.ESP = state
+
+		if not state then
+			removeESP()
+		end
+	end
+)
+
+--------------------------------------------------------
+-- HITBOX
+--------------------------------------------------------
+
+local HitboxObjects = {}
+
+local function removeHitboxes()
+
+	for _, object in pairs(HitboxObjects) do
+
+		if object then
+			object:Destroy()
+		end
+	end
+
+	table.clear(HitboxObjects)
+end
+
+local function updateHitboxes()
+
+	if not Settings.VisualHitbox then
+		removeHitboxes()
+		return
+	end
+
+	for _, other in ipairs(Players:GetPlayers()) do
+
+		if other ~= Player and other.Character then
+
+			local root =
+				other.Character:FindFirstChild("HumanoidRootPart")
+
+			if root and not HitboxObjects[other.Character] then
+
+				local box = Instance.new("SelectionBox")
+
+				box.Name = "ApexVisualHitbox"
+				box.Adornee = root
+				box.LineThickness = .04
+				box.Color3 = C.Orange
+				box.SurfaceTransparency = 1
+				box.Parent = root
+
+				HitboxObjects[other.Character] = box
+			end
+		end
+	end
+end
+
+createToggle(
+	"Visual Hitbox",
+	false,
+	function(state)
+
+		Settings.VisualHitbox = state
+
+		if not state then
+			removeHitboxes()
+		end
+	end
+)
+
+--------------------------------------------------------
+-- FPS BOOST
+--------------------------------------------------------
+
+local SavedShadows = Lighting.GlobalShadows
+local SavedFog = Lighting.FogEnd
+local SavedParticles = {}
+
+local function enableBoost()
+
+	Settings.FPSBoost = true
+
+	SavedShadows = Lighting.GlobalShadows
+	SavedFog = Lighting.FogEnd
+
+	Lighting.GlobalShadows = false
+	Lighting.FogEnd = 100000
+
+	table.clear(SavedParticles)
+
+	for _, object in ipairs(workspace:GetDescendants()) do
+
+		if object:IsA("ParticleEmitter")
+			or object:IsA("Trail")
+			or object:IsA("Smoke")
+			or object:IsA("Fire") then
+
+			SavedParticles[object] = object.Enabled
+			object.Enabled = false
+		end
+	end
+
+	setStatus("FPS BOOST ENABLED", C.Green)
+end
+
+local function disableBoost()
+
+	Settings.FPSBoost = false
+
+	Lighting.GlobalShadows = SavedShadows
+	Lighting.FogEnd = SavedFog
+
+	for object, state in pairs(SavedParticles) do
+
+		if object and object.Parent then
+			object.Enabled = state
+		end
+	end
+
+	table.clear(SavedParticles)
+
+	setStatus("SYSTEM READY", C.Green)
+end
+
+createToggle(
+	"FPS Boost",
+	false,
+	function(state)
+
+		if state then
+			enableBoost()
+		else
+			disableBoost()
+		end
+	end
+)
+
+--------------------------------------------------------
+-- PERFORMANCE DISPLAY
+--------------------------------------------------------
+
+local Stats = Instance.new("Frame")
+Stats.Size = UDim2.fromOffset(130, 72)
+Stats.Position = UDim2.fromOffset(10, 10)
+Stats.BackgroundColor3 = C.BG
+Stats.BackgroundTransparency = .08
+Stats.BorderSizePixel = 0
+Stats.Visible = false
+Stats.Parent = Gui
+
+Instance.new("UICorner", Stats).CornerRadius = UDim.new(0, 9)
+
+local FPS = Instance.new("TextLabel")
+FPS.Size = UDim2.new(1, -12, 0, 22)
+FPS.Position = UDim2.fromOffset(6, 5)
+FPS.BackgroundTransparency = 1
+FPS.Text = "FPS: --"
+FPS.TextColor3 = C.Green
+FPS.TextSize = 10
+FPS.Font = Enum.Font.GothamBold
+FPS.TextXAlignment = Enum.TextXAlignment.Left
+FPS.Parent = Stats
+
+local GPS = Instance.new("TextLabel")
+GPS.Size = UDim2.new(1, -12, 0, 22)
+GPS.Position = UDim2.fromOffset(6, 27)
+GPS.BackgroundTransparency = 1
+GPS.Text = "GPS: --"
+GPS.TextColor3 = C.Text
+GPS.TextSize = 8
+GPS.Font = Enum.Font.Gotham
+GPS.TextXAlignment = Enum.TextXAlignment.Left
+GPS.Parent = Stats
+
+local Boost = Instance.new("TextLabel")
+Boost.Size = UDim2.new(1, -12, 0, 18)
+Boost.Position = UDim2.fromOffset(6, 49)
+Boost.BackgroundTransparency = 1
+Boost.Text = "BOOST: OFF"
+Boost.TextColor3 = C.Muted
+Boost.TextSize = 8
+Boost.Font = Enum.Font.GothamBold
+Boost.TextXAlignment = Enum.TextXAlignment.Left
+Boost.Parent = Stats
+
+--------------------------------------------------------
+-- RESET
+--------------------------------------------------------
+
+local Reset = Instance.new("TextButton")
+Reset.Size = UDim2.new(1, -4, 0, 40)
+Reset.BackgroundColor3 = Color3.fromRGB(38, 25, 55)
+Reset.BorderSizePixel = 0
+Reset.Text = "RESET SETTINGS"
+Reset.TextColor3 = C.Text
+Reset.TextSize = 10
+Reset.Font = Enum.Font.GothamBold
+Reset.Parent = Scroll
+
+Instance.new("UICorner", Reset).CornerRadius = UDim.new(0, 9)
+
+Reset.MouseButton1Click:Connect(function()
+
+	Settings.WallHop = false
+
+	Settings.WalkSpeedEnabled = false
+	Settings.WalkSpeed = 16
+
+	Settings.JumpPowerEnabled = false
+	Settings.JumpPower = 50
+
+	Settings.WallDistance = 4.5
+	Settings.WallPower = 48
+	Settings.WallPush = 2.5
+	Settings.MovementPreserve = .78
+
+	Settings.ESP = false
+	Settings.VisualHitbox = false
+
+	if Settings.FPSBoost then
+		disableBoost()
+	end
+
+	Settings.FPSBoost = false
+
+	removeESP()
+	removeHitboxes()
+
+	if Humanoid then
+		Humanoid.WalkSpeed = 16
+		Humanoid.JumpPower = 50
+	end
+
+	if Controllers["Walk Speed"] then
+		Controllers["Walk Speed"](false)
+	end
+
+	if Controllers["Jump Power"] then
+		Controllers["Jump Power"](false)
+	end
+
+	if Controllers["Wall Hop"] then
+		Controllers["Wall Hop"](false)
+	end
+
+	if Controllers["ESP"] then
+		Controllers["ESP"](false)
+	end
+
+	if Controllers["Visual Hitbox"] then
+		Controllers["Visual Hitbox"](false)
+	end
+
+	if Controllers["FPS Boost"] then
+		Controllers["FPS Boost"](false)
+	end
+
+	refreshWalkSpeed()
+	refreshJumpPower()
+
+	setStatus("SETTINGS RESET", C.Orange)
+end)
+
+--------------------------------------------------------
+-- FPS / GPS
+--------------------------------------------------------
+
+local frames = 0
+local lastFPS = os.clock()
+local currentFPS = 60
+
+RunService.RenderStepped:Connect(function()
+
+	frames += 1
+
+	local now = os.clock()
+
+	if now - lastFPS >= .5 then
+
+		currentFPS = math.floor(
+			frames / (now - lastFPS)
+		)
+
+		frames = 0
+		lastFPS = now
+	end
+
+	refreshWalkSpeed()
+	refreshJumpPower()
+
+	if Settings.FPSBoost then
+
+		Stats.Visible = true
+
+		FPS.Text =
+			"FPS: " .. tostring(currentFPS)
+
+		Boost.Text = "BOOST: ON"
+		Boost.TextColor3 = C.Green
+
+		if Root then
+
+			local p = Root.Position
+
+			GPS.Text = string.format(
+				"GPS: %.0f, %.0f, %.0f",
+				p.X,
+				p.Y,
+				p.Z
+			)
+		end
+
+	else
+
+		Stats.Visible = false
+	end
+
+	if Settings.ESP then
+		updateESP()
+	end
+
+	if Settings.VisualHitbox then
+		updateHitboxes()
+	end
+end)
+
+--------------------------------------------------------
+-- CLEANUP
+--------------------------------------------------------
+
+Players.PlayerRemoving:Connect(function(player)
+
+	if player.Character then
+
+		local char = player.Character
+
+		if ESPObjects[char] then
+			ESPObjects[char]:Destroy()
+			ESPObjects[char] = nil
+		end
+
+		if HitboxObjects[char] then
+			HitboxObjects[char]:Destroy()
+			HitboxObjects[char] = nil
+		end
+	end
+end)
+
+--------------------------------------------------------
+-- START
+--------------------------------------------------------
+
+setStatus("SYSTEM READY", C.Green)
+
+print("[APEX COMMUNITY V11] Loaded")
+print("[APEX COMMUNITY] Created by Vex")
+
